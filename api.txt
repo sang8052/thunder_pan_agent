@@ -1,0 +1,152 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>迅雷云盘API 调试工具</title>
+   
+</head>
+<body>
+    <!--
+    测试用视频地址:https://sf1-cdn-tos.huoshanstatic.com/obj/media-fe/xgplayer_doc_video/mp4/xgplayer-demo-360p.mp4
+    测试用视频磁力地址:magnet:?xt=urn:btih:9A2139D3A445416AF38F43B628D7E07FF4A299DA (星际穿越)
+    测试用图片地址: https://n.sinaimg.cn/sinacn08/20/w660h960/20180831/657d-hinpmnq4121542.jpg
+    -->
+    <div>
+        <table width="0">
+            <tr><td style="text-align:left">父目录id:<td><td><input id="parent_id" type="text" placeholder="为空表示根目录" style="width:400px"></td></tr>
+            <tr><td>文件夹名称:<td><td><input id="dirname" type="text" placeholder="" style="width:400px"></td></tr>
+            <tr><td>文件/文件夹Id:<td><td><input  value= "" id="file_id" type="text" placeholder="" style="width:400px"></td></tr>
+            <tr><td>离线连接:<td><td><input id="magnet" type="text" placeholder="支持磁力链" style="width:400px"></td></tr>
+            <tr><td>离线任务Id:<td><td><input id="task_id" type="text" placeholder="为空表示所有" style="width:400px"></td></tr>
+        </table>
+        <button onclick="btn_list_dir()">列出文件</button>
+        <button onclick="btn_mkdir()">新建文件夹</button>
+        <button onclick="btn_delete()">删除文件/文件夹</button>
+        <button onclick="btn_create()">新建离线任务</button>
+        <button onclick="btn_task()">查询离线任务</button>
+        <button onclick="btn_file_info()">查询文件详情/播放</button>
+    </div>
+    
+    
+     
+    <div id="console" style="margin-top:16px">   
+        <textarea id="text_console" style="width:600px;height:700px;" readonly="readonly"></textarea>
+    </div>
+    
+    <div id="player" style="position:fixed;left:800px;top:16px">   
+        媒体播放
+        <div style="width:600px;height:500px;border:2px solid black">
+            <img id="player_img" style="width:100%;display:none" >
+            <video id="player_video" controls="" style="width:100%;display:none" ></video>
+        </div>
+    </div>
+    
+    <script type="text/javascript" src = "https://cdn.iw3c.com.cn/jquery/jquery-3.6.3.min.js"></script>
+
+<script>
+
+    function text_console(log){
+        console.log(log);
+        var tmp = $("#text_console").val()
+        if(typeof(log) == typeof("str")) tmp = tmp + "\n" + log;
+        else tmp = tmp + "\n" + JSON.stringify(log);
+         $("#text_console").val(tmp);
+    }
+
+    function request_api(url,data,callback){
+        text_console("请求接口:"+"/api/" + url+",参数:"+JSON.stringify(data))
+          $.ajax({
+            url:"/api/" + url,
+            type:'POST',
+            data:JSON.stringify(data),
+            contentType : "application/json",
+            dataType : "json",
+            success:(res)=>{
+                callback(res);
+            },
+            error:(err)=>{
+                text_console("请求接口出错");
+                text_console(err)
+            }
+        })
+    }
+    
+    
+    function btn_list_dir(){
+       $("#text_console").val("");
+        text_console("列出[parent_id:" + $("#parent_id").val() + "]下的所有文件")
+       request_api("/file_list",{parent_id:$("#parent_id").val()},(res)=>{
+           text_console(res);
+       })
+    }
+    
+    function btn_mkdir(){
+       $("#text_console").val("");
+          text_console("在[parent_id:" + $("#parent_id").val() + "]下新建文件夹[dirname:" + $("#dirname").val() + "]")
+          request_api("/make_dir",{parent_id:$("#parent_id").val(),dirname:$("#dirname").val()},(res)=>{
+           text_console(res);
+       })
+    }
+    
+    function btn_delete(){
+          $("#text_console").val("");
+          text_console("删除文件[file_id:" + $("#file_id").val())
+          request_api("/delete_file",{file_id:$("#file_id").val()},(res)=>{
+           text_console(res);
+       })
+    }
+    
+    function btn_create(){
+          $("#text_console").val("");
+          text_console("新建离线任务[parent_id:" + $("#parent_id").val())
+          request_api("/create_task",{parent_id:$("#parent_id").val(),magnet:$("#magnet").val()},(res)=>{
+            text_console(res);
+       })
+    }
+    
+    function btn_task(){
+         $("#text_console").val("");
+          text_console("查询离线任务[task_id:" + $("#task_id").val())
+          request_api("/task_list",{task_id:$("#task_id").val()},(res)=>{
+            text_console(res);
+       })
+    }
+    
+     function btn_file_info(){
+         $("#text_console").val("");
+          text_console("查询文件详情/播放[file_id:" + $("#file_id").val())
+          request_api("/file_info",{file_id:$("#file_id").val()},(res)=>{
+          text_console(res);
+          text_console("普通用户下载/播放地址:" + res.data.web_content_link)
+          var file_link=  res.data.web_content_link
+          try{
+              text_console("VIP 高速下载/播放地址:" + res.data.links["application/octet-stream"].url)
+              file_link=  res.data.links["application/octet-stream"].url
+          }
+          catch(err){
+            text_console("没有获取到VIP播放地址或者不是会员")
+          }
+            console.log(res.data.mime_type)
+          if(res.data.mime_type == 'video/mp4' || res.data.mime_type == 'image/jpeg'){
+             console.log(res.data.mime_type)
+              if(res.data.mime_type == 'image/jpeg')
+              {
+                  $("#player_video").css("display","none");
+                  $("#player_img").css("display","");
+                  $("#player_img").attr("src",file_link);
+              }
+              else{
+                  $("#player_img").css("display","none");
+                  $("#player_video").css("display","");
+                  $("#player_video").attr("src",file_link);
+              }
+          }
+            
+       })
+    }
+    
+    
+    
+</script>
+</body>
+</html>

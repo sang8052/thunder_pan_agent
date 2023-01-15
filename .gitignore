@@ -1,0 +1,9 @@
+dist/
+build/
+__pycache__/
+resources/
+.idea/
+*.db
+*.db-shm
+*.db-wal
+*.spec
